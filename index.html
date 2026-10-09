@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Eilik Mobile Companion</title>
+  <style>
+    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+    body {
+      background-color: #050608;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      touch-action: manipulation;
+    }
+
+    /* Face Container */
+    #face {
+      position: relative;
+      width: 280px;
+      height: 160px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    /* Eilik-Style Cyan Organic Eyes */
+    .eye {
+      width: 84px;
+      height: 105px;
+      background: radial-gradient(circle at 50% 40%, #5af6ff 25%, #00d0e6 85%);
+      border-radius: 46px;
+      box-shadow: 0 0 25px rgba(0, 208, 230, 0.75), 0 0 60px rgba(0, 208, 230, 0.35);
+      transition: all 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform-origin: center center;
+    }
+
+    /* Mood Animations */
+    .blink {
+      height: 6px !important;
+      border-radius: 4px !important;
+      box-shadow: 0 0 15px rgba(0, 208, 230, 0.5) !important;
+    }
+
+    /* Eilik Happy / Squint Eyes (Inverted Arches) */
+    .happy {
+      height: 60px !important;
+      border-radius: 50px 50px 10px 10px !important;
+      transform: translateY(-10px) !important;
+    }
+
+    /* Eilik Listening Eyes (Enlarged Pupils) */
+    .listening {
+      transform: scale(1.15) !important;
+      box-shadow: 0 0 45px rgba(0, 208, 230, 0.95) !important;
+    }
+
+    /* Eilik Dazed / Shaking */
+    @keyframes dazed {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-8px, 4px); }
+      75% { transform: translate(8px, -4px); }
+    }
+    .dazed {
+      animation: dazed 0.2s infinite;
+    }
+
+    #status-hint {
+      position: absolute;
+      bottom: 24px;
+      color: rgba(255, 255, 255, 0.25);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="face">
+    <div class="eye" id="left-eye"></div>
+    <div class="eye" id="right-eye"></div>
+  </div>
+
+  <div id="status-hint">Tap face to talk or tickle</div>
+
+  <!-- Background Music Player -->
+  <audio id="music-player" loop preload="none"></audio>
+
+  <script>
+    const leftEye = document.getElementById('left-eye');
+    const rightEye = document.getElementById('right-eye');
+    const face = document.getElementById('face');
+    const statusHint = document.getElementById('status-hint');
+    const musicPlayer = document.getElementById('music-player');
+
+    // 1. Natural Idle Blinking & Glances
+    function scheduleBlink() {
+      const delay = Math.random() * 3500 + 1500;
+      setTimeout(() => {
+        if (!leftEye.classList.contains('listening') && !leftEye.classList.contains('happy')) {
+          leftEye.classList.add('blink');
+          rightEye.classList.add('blink');
+          setTimeout(() => {
+            leftEye.classList.remove('blink');
+            rightEye.classList.remove('blink');
+          }, 110);
+        }
+        scheduleBlink();
+      }, delay);
+    }
+    scheduleBlink();
+
+    // 2. Touch Interaction (Like petting Eilik's head)
+    face.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      triggerHappyMood();
+    });
+
+    face.addEventListener('click', () => {
+      triggerHappyMood();
+    });
+
+    function triggerHappyMood() {
+      leftEye.classList.add('happy');
+      rightEye.classList.add('happy');
+      statusHint.innerText = "^ _ ^";
+      setTimeout(() => {
+        leftEye.classList.remove('happy');
+        rightEye.classList.remove('happy');
+        statusHint.innerText = "Tap face to talk or tickle";
+      }, 1400);
+    }
+
+    // 3. Speech Recognition (Alexa-style Listening)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        leftEye.classList.add('listening');
+        rightEye.classList.add('listening');
+        statusHint.innerText = "Listening...";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        statusHint.innerText = `You: "${transcript}"`;
+        handleCommand(transcript);
+      };
+
+      recognition.onerror = () => {
+        resetEyes();
+      };
+
+      recognition.onend = () => {
+        resetEyes();
+      };
+    }
+
+    function resetEyes() {
+      leftEye.classList.remove('listening');
+      rightEye.classList.remove('listening');
+    }
+
+    // Double tap the background to talk
+    window.addEventListener('dblclick', () => {
+      if (recognition) {
+        recognition.start();
+      } else {
+        alert("Speech recognition not supported in this browser. Use mobile Chrome/Safari.");
+      }
+    });
+
+    // 4. Intent Routing (Music & Dialogue)
+    function handleCommand(text) {
+      if (text.includes("music") || text.includes("play song") || text.includes("play jazz")) {
+        // Stream a free lo-fi / chillout web radio stream
+        musicPlayer.src = "https://streams.ilovemusic.de/iloveradio17.mp3"; 
+        musicPlayer.play();
+        speakReply("Playing your chillout music station now!");
+      } else if (text.includes("stop") || text.includes("quiet")) {
+        musicPlayer.pause();
+        speakReply("Music stopped.");
+      } else {
+        // Simple built-in replies (or bridge to OpenAI / DeepSeek endpoint here)
+        queryBrain(text);
+      }
+    }
+
+    // 5. Text-To-Speech with Mouth / Bounce sync
+    function speakReply(text) {
+      const synth = window.speechSynthesis;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 1.35; // Slightly higher pitch for cute robot persona
+      utterance.rate = 1.05;
+
+      utterance.onboundary = () => {
+        // Micro-bounce eyes while speaking
+        leftEye.style.transform = `scaleY(${Math.random() * 0.3 + 0.85})`;
+        rightEye.style.transform = `scaleY(${Math.random() * 0.3 + 0.85})`;
+      };
+
+      utterance.onend = () => {
+        leftEye.style.transform = "none";
+        rightEye.style.transform = "none";
+        statusHint.innerText = "Tap face to talk or tickle";
+      };
+
+      synth.speak(utterance);
+    }
+
+    async function queryBrain(userText) {
+      statusHint.innerText = "Thinking...";
+      // You can replace this fetch with your own OpenAI/DeepSeek backend
+      speakReply(`I heard you say: ${userText}. How can I help you today?`);
+    }
+  </script>
+</body>
+</html>
