@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Eilik AI Companion</title>
+  <title>Eilik AI</title>
   <style>
     * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body {
+    html, body {
       background-color: #000000;
       width: 100vw;
       height: 100vh;
@@ -15,229 +15,226 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      cursor: pointer;
     }
 
-    /* Face Area */
     #face {
       position: relative;
-      width: 300px;
-      height: 160px;
+      width: 320px;
+      height: 180px;
       display: flex;
-      justify-content: space-between;
+      justify-content: space-around;
       align-items: center;
-      padding: 0 16px;
-      cursor: pointer;
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    /* SVG Eye containers */
+    /* Clean Glowing SVG Eyes (No bounding box artifacts) */
     .eye-svg {
-      width: 95px;
-      height: 120px;
-      filter: drop-shadow(0 0 20px rgba(0, 220, 245, 0.85)) drop-shadow(0 0 45px rgba(0, 220, 245, 0.4));
-      transition: transform 0.15s ease;
+      width: 120px;
+      height: 160px;
+      overflow: visible;
     }
 
-    /* Normal Eye Shape */
     .eye-path {
       fill: #00e5ff;
-      transition: d 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      filter: drop-shadow(0 0 16px #00e5ff) drop-shadow(0 0 35px rgba(0, 229, 255, 0.6));
+      transition: d 0.12s ease-out;
     }
 
-    /* Touch Controls */
-    .controls {
-      position: absolute;
-      bottom: 28px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .btn-bar {
-      display: flex;
-      gap: 14px;
-    }
-
-    button {
-      background: rgba(0, 229, 255, 0.12);
-      border: 1.5px solid #00e5ff;
-      color: #7df9ff;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 22px;
-      cursor: pointer;
-    }
-
-    button:active {
-      background: rgba(0, 229, 255, 0.4);
-      transform: scale(0.95);
-    }
-
+    /* Subdued Status Text */
     #status {
-      color: rgba(255, 255, 255, 0.5);
+      position: absolute;
+      bottom: 30px;
+      color: rgba(0, 229, 255, 0.4);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       font-size: 13px;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
 
-  <!-- Animated Face -->
   <div id="face">
     <!-- Left Eye -->
-    <svg class="eye-svg" id="left-eye" viewBox="0 0 100 130">
-      <path class="eye-path" id="left-path" d="M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z" />
+    <svg class="eye-svg" viewBox="0 0 100 140">
+      <path class="eye-path" id="left-eye" d="M 50 10 C 80 10, 95 35, 95 70 C 95 105, 80 130, 50 130 C 20 130, 5 105, 5 70 C 5 35, 20 10, 50 10 Z" />
     </svg>
 
     <!-- Right Eye -->
-    <svg class="eye-svg" id="right-eye" viewBox="0 0 100 130">
-      <path class="eye-path" id="right-path" d="M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z" />
+    <svg class="eye-svg" viewBox="0 0 100 140">
+      <path class="eye-path" id="right-eye" d="M 50 10 C 80 10, 95 35, 95 70 C 95 105, 80 130, 50 130 C 20 130, 5 105, 5 70 C 5 35, 20 10, 50 10 Z" />
     </svg>
   </div>
 
-  <div class="controls">
-    <div id="status">Tap face or buttons below</div>
-    <div class="btn-bar">
-      <button id="btn-talk">🎤 Talk</button>
-      <button id="btn-music">🎵 Play Music</button>
-    </div>
-  </div>
+  <div id="status">Tap anywhere to wake up</div>
 
   <audio id="music-player" loop preload="none"></audio>
 
   <script>
-    const leftPath = document.getElementById('left-path');
-    const rightPath = document.getElementById('right-path');
     const leftEye = document.getElementById('left-eye');
     const rightEye = document.getElementById('right-eye');
     const face = document.getElementById('face');
     const status = document.getElementById('status');
-    const btnTalk = document.getElementById('btn-talk');
-    const btnMusic = document.getElementById('btn-music');
     const musicPlayer = document.getElementById('music-player');
 
-    // SVG Vector Paths for Smooth Eilik Expressions
-    const PATH_NORMAL = "M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z";
-    const PATH_BLINK  = "M 50 60 C 75 60, 95 62, 95 65 C 95 68, 75 70, 50 70 C 25 70, 5 68, 5 65 C 5 62, 25 60, 50 60 Z";
-    // Real curved smiling arch (crescent) instead of flat dome:
-    const PATH_HAPPY  = "M 10 70 C 15 25, 85 25, 90 70 C 80 48, 20 48, 10 70 Z";
+    // SVG Vector Coordinates
+    const SHAPE_NORMAL = "M 50 10 C 80 10, 95 35, 95 70 C 95 105, 80 130, 50 130 C 20 130, 5 105, 5 70 C 5 35, 20 10, 50 10 Z";
+    const SHAPE_BLINK  = "M 50 68 C 80 68, 95 69, 95 70 C 95 71, 80 72, 50 72 C 20 72, 5 71, 5 70 C 5 69, 20 68, 50 68 Z";
+    // Curved upward smiling crescent:
+    const SHAPE_HAPPY  = "M 10 75 C 20 20, 80 20, 90 75 C 75 42, 25 42, 10 75 Z";
 
+    let isAwake = false;
     let isBusy = false;
+    let isPlayingMusic = false;
+    let recognition = null;
 
     // 1. Natural Blinking Loop
-    function scheduleBlink() {
-      const wait = Math.random() * 3200 + 1800;
+    function blinkLoop() {
+      const wait = Math.random() * 3200 + 2000;
       setTimeout(() => {
         if (!isBusy) {
-          leftPath.setAttribute('d', PATH_BLINK);
-          rightPath.setAttribute('d', PATH_BLINK);
+          leftEye.setAttribute('d', SHAPE_BLINK);
+          rightEye.setAttribute('d', SHAPE_BLINK);
           setTimeout(() => {
             if (!isBusy) {
-              leftPath.setAttribute('d', PATH_NORMAL);
-              rightPath.setAttribute('d', PATH_NORMAL);
+              leftEye.setAttribute('d', SHAPE_NORMAL);
+              rightEye.setAttribute('d', SHAPE_NORMAL);
             }
           }, 110);
         }
-        scheduleBlink();
+        blinkLoop();
       }, wait);
     }
-    scheduleBlink();
+    blinkLoop();
 
-    // 2. Pet / Tickle Animation
-    function triggerHappy() {
-      isBusy = true;
-      leftPath.setAttribute('d', PATH_HAPPY);
-      rightPath.setAttribute('d', PATH_HAPPY);
-      face.style.transform = "rotate(4deg) scale(1.05)";
-      status.innerText = "Hehe! (^_^)";
-      speak("That tickles!");
-
-      setTimeout(() => {
-        face.style.transform = "rotate(-4deg) scale(1.05)";
-      }, 200);
-
-      setTimeout(() => {
-        face.style.transform = "none";
-        leftPath.setAttribute('d', PATH_NORMAL);
-        rightPath.setAttribute('d', PATH_NORMAL);
-        status.innerText = "Tap face or buttons below";
-        isBusy = false;
-      }, 1600);
-    }
-    face.addEventListener('click', triggerHappy);
-
-    // 3. Audio & Text-to-Speech
-    function speak(text) {
+    // 2. Cute Robot Voice Synthesis
+    function speak(text, onComplete) {
       window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'en-US';
-      utter.pitch = 1.35;
-      utter.rate = 1.05;
-      window.speechSynthesis.speak(utter);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.pitch = 1.4; // Robot tone
+      utterance.rate = 1.05;
+
+      utterance.onstart = () => {
+        isBusy = true;
+        status.innerText = text;
+      };
+
+      utterance.onend = () => {
+        isBusy = false;
+        leftEye.setAttribute('d', SHAPE_NORMAL);
+        rightEye.setAttribute('d', SHAPE_NORMAL);
+        status.innerText = "Listening...";
+        if (onComplete) onComplete();
+      };
+
+      window.speechSynthesis.speak(utterance);
     }
 
-    // 4. Music Playback
-    let playing = false;
-    btnMusic.addEventListener('click', () => {
-      if (!playing) {
-        musicPlayer.src = "https://streams.ilovemusic.de/iloveradio17.mp3";
-        musicPlayer.play().then(() => {
-          playing = true;
-          btnMusic.innerText = "⏸ Pause Music";
-          status.innerText = "Playing Lo-Fi stream...";
-        }).catch(e => {
-          status.innerText = "Tap screen first to permit audio";
-        });
-      } else {
-        musicPlayer.pause();
-        playing = false;
-        btnMusic.innerText = "🎵 Play Music";
-        status.innerText = "Music stopped";
+    // 3. Alexa-Style Continuous Listening
+    function initSpeech() {
+      const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechClass) {
+        status.innerText = "Speech not supported in this browser";
+        return;
       }
-    });
 
-    // 5. Speech Recognition (Talk)
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRec) {
-      const recognition = new SpeechRec();
+      recognition = new SpeechClass();
+      recognition.continuous = false; // Mobile browsers operate best restarting per utterance
+      recognition.interimResults = false;
       recognition.lang = 'en-US';
 
-      btnTalk.addEventListener('click', () => {
-        recognition.start();
-        leftEye.style.transform = "scale(1.15)";
-        rightEye.style.transform = "scale(1.15)";
-        status.innerText = "Listening...";
-      });
+      recognition.onstart = () => {
+        if (!isBusy) status.innerText = "Listening...";
+      };
 
-      recognition.onresult = (e) => {
-        leftEye.style.transform = "none";
-        rightEye.style.transform = "none";
-        const text = e.results[0][0].transcript.toLowerCase();
-        status.innerText = `You: "${text}"`;
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript.toLowerCase();
+        status.innerText = `"${text}"`;
+        handleIntent(text);
+      };
 
-        if (text.includes("music") || text.includes("play")) {
-          btnMusic.click();
-          speak("Playing music for you!");
-        } else if (text.includes("stop")) {
-          if (playing) btnMusic.click();
-          speak("Stopping music.");
-        } else {
-          speak("You said: " + text);
+      recognition.onerror = (e) => {
+        // Auto-restart on silent timeouts
+        if (isAwake && !isBusy) {
+          setTimeout(startListening, 300);
         }
       };
 
-      recognition.onerror = () => {
-        leftEye.style.transform = "none";
-        rightEye.style.transform = "none";
-        status.innerText = "Didn't catch that. Tap talk again.";
+      recognition.onend = () => {
+        if (isAwake && !isBusy) {
+          setTimeout(startListening, 300);
+        }
       };
-    } else {
-      btnTalk.style.display = "none";
-      status.innerText = "Voice API not supported in this browser.";
     }
+
+    function startListening() {
+      if (recognition && isAwake && !isBusy) {
+        try { recognition.start(); } catch (e) {}
+      }
+    }
+
+    // 4. Intent Handler
+    function handleIntent(command) {
+      if (command.includes("play") || command.includes("music") || command.includes("song")) {
+        musicPlayer.src = "https://streams.ilovemusic.de/iloveradio17.mp3";
+        musicPlayer.play();
+        isPlayingMusic = true;
+        speak("Playing your music station now!");
+      } 
+      else if (command.includes("stop") || command.includes("quiet") || command.includes("pause")) {
+        if (isPlayingMusic) {
+          musicPlayer.pause();
+          isPlayingMusic = false;
+          speak("Music stopped.");
+        } else {
+          speak("I am quiet!");
+        }
+      } 
+      else if (command.includes("hello") || command.includes("hi")) {
+        triggerHappyReaction("Hello! Nice to meet you!");
+      } 
+      else if (command.includes("who are you") || command.includes("what is your name")) {
+        triggerHappyReaction("I am your desktop companion!");
+      } 
+      else {
+        // Echo conversation / chat reply
+        speak("I heard you say: " + command);
+      }
+    }
+
+    // 5. Happy Smile Animation
+    function triggerHappyReaction(replyText) {
+      isBusy = true;
+      leftEye.setAttribute('d', SHAPE_HAPPY);
+      rightEye.setAttribute('d', SHAPE_HAPPY);
+      face.style.transform = "rotate(5deg) scale(1.05)";
+
+      setTimeout(() => { face.style.transform = "rotate(-5deg) scale(1.05)"; }, 180);
+      setTimeout(() => { face.style.transform = "none"; }, 360);
+
+      speak(replyText || "Hehe! (^_^)", () => {
+        leftEye.setAttribute('d', SHAPE_NORMAL);
+        rightEye.setAttribute('d', SHAPE_NORMAL);
+        isBusy = false;
+      });
+    }
+
+    // 6. First Touch Unlocks Audio & Starts Listening
+    window.addEventListener('click', () => {
+      if (!isAwake) {
+        isAwake = true;
+        // Unlock mobile audio
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+        initSpeech();
+        triggerHappyReaction("I am awake! Tell me anything or say play music.");
+      } else if (!isBusy) {
+        triggerHappyReaction("That tickles!");
+      }
+    });
   </script>
 </body>
 </html>
