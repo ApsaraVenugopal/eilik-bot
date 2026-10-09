@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Eilik Mobile Companion</title>
+  <title>Eilik AI Companion</title>
   <style>
-    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      background-color: #050608;
+      background-color: #000000;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
@@ -15,67 +15,69 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    /* Face Container */
+    /* Face Area */
     #face {
       position: relative;
-      width: 280px;
+      width: 300px;
       height: 160px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 10px;
+      padding: 0 16px;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* SVG Eye containers */
+    .eye-svg {
+      width: 95px;
+      height: 120px;
+      filter: drop-shadow(0 0 20px rgba(0, 220, 245, 0.85)) drop-shadow(0 0 45px rgba(0, 220, 245, 0.4));
+      transition: transform 0.15s ease;
+    }
+
+    /* Normal Eye Shape */
+    .eye-path {
+      fill: #00e5ff;
+      transition: d 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Touch Controls */
+    .controls {
+      position: absolute;
+      bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-bar {
+      display: flex;
+      gap: 14px;
+    }
+
+    button {
+      background: rgba(0, 229, 255, 0.12);
+      border: 1.5px solid #00e5ff;
+      color: #7df9ff;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 22px;
       cursor: pointer;
     }
 
-    /* Eilik-Style Cyan Organic Eyes */
-    .eye {
-      width: 84px;
-      height: 105px;
-      background: radial-gradient(circle at 50% 40%, #5af6ff 25%, #00d0e6 85%);
-      border-radius: 46px;
-      box-shadow: 0 0 25px rgba(0, 208, 230, 0.75), 0 0 60px rgba(0, 208, 230, 0.35);
-      transition: all 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
-      transform-origin: center center;
+    button:active {
+      background: rgba(0, 229, 255, 0.4);
+      transform: scale(0.95);
     }
 
-    /* Mood Animations */
-    .blink {
-      height: 6px !important;
-      border-radius: 4px !important;
-      box-shadow: 0 0 15px rgba(0, 208, 230, 0.5) !important;
-    }
-
-    /* Eilik Happy / Squint Eyes (Inverted Arches) */
-    .happy {
-      height: 60px !important;
-      border-radius: 50px 50px 10px 10px !important;
-      transform: translateY(-10px) !important;
-    }
-
-    /* Eilik Listening Eyes (Enlarged Pupils) */
-    .listening {
-      transform: scale(1.15) !important;
-      box-shadow: 0 0 45px rgba(0, 208, 230, 0.95) !important;
-    }
-
-    /* Eilik Dazed / Shaking */
-    @keyframes dazed {
-      0%, 100% { transform: translate(0, 0); }
-      25% { transform: translate(-8px, 4px); }
-      75% { transform: translate(8px, -4px); }
-    }
-    .dazed {
-      animation: dazed 0.2s infinite;
-    }
-
-    #status-hint {
-      position: absolute;
-      bottom: 24px;
-      color: rgba(255, 255, 255, 0.25);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    #status {
+      color: rgba(255, 255, 255, 0.5);
       font-size: 13px;
       letter-spacing: 0.5px;
     }
@@ -83,148 +85,158 @@
 </head>
 <body>
 
+  <!-- Animated Face -->
   <div id="face">
-    <div class="eye" id="left-eye"></div>
-    <div class="eye" id="right-eye"></div>
+    <!-- Left Eye -->
+    <svg class="eye-svg" id="left-eye" viewBox="0 0 100 130">
+      <path class="eye-path" id="left-path" d="M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z" />
+    </svg>
+
+    <!-- Right Eye -->
+    <svg class="eye-svg" id="right-eye" viewBox="0 0 100 130">
+      <path class="eye-path" id="right-path" d="M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z" />
+    </svg>
   </div>
 
-  <div id="status-hint">Tap face to talk or tickle</div>
+  <div class="controls">
+    <div id="status">Tap face or buttons below</div>
+    <div class="btn-bar">
+      <button id="btn-talk">🎤 Talk</button>
+      <button id="btn-music">🎵 Play Music</button>
+    </div>
+  </div>
 
-  <!-- Background Music Player -->
   <audio id="music-player" loop preload="none"></audio>
 
   <script>
+    const leftPath = document.getElementById('left-path');
+    const rightPath = document.getElementById('right-path');
     const leftEye = document.getElementById('left-eye');
     const rightEye = document.getElementById('right-eye');
     const face = document.getElementById('face');
-    const statusHint = document.getElementById('status-hint');
+    const status = document.getElementById('status');
+    const btnTalk = document.getElementById('btn-talk');
+    const btnMusic = document.getElementById('btn-music');
     const musicPlayer = document.getElementById('music-player');
 
-    // 1. Natural Idle Blinking & Glances
+    // SVG Vector Paths for Smooth Eilik Expressions
+    const PATH_NORMAL = "M 50 5 C 75 5, 95 30, 95 65 C 95 100, 75 125, 50 125 C 25 125, 5 100, 5 65 C 5 30, 25 5, 50 5 Z";
+    const PATH_BLINK  = "M 50 60 C 75 60, 95 62, 95 65 C 95 68, 75 70, 50 70 C 25 70, 5 68, 5 65 C 5 62, 25 60, 50 60 Z";
+    // Real curved smiling arch (crescent) instead of flat dome:
+    const PATH_HAPPY  = "M 10 70 C 15 25, 85 25, 90 70 C 80 48, 20 48, 10 70 Z";
+
+    let isBusy = false;
+
+    // 1. Natural Blinking Loop
     function scheduleBlink() {
-      const delay = Math.random() * 3500 + 1500;
+      const wait = Math.random() * 3200 + 1800;
       setTimeout(() => {
-        if (!leftEye.classList.contains('listening') && !leftEye.classList.contains('happy')) {
-          leftEye.classList.add('blink');
-          rightEye.classList.add('blink');
+        if (!isBusy) {
+          leftPath.setAttribute('d', PATH_BLINK);
+          rightPath.setAttribute('d', PATH_BLINK);
           setTimeout(() => {
-            leftEye.classList.remove('blink');
-            rightEye.classList.remove('blink');
+            if (!isBusy) {
+              leftPath.setAttribute('d', PATH_NORMAL);
+              rightPath.setAttribute('d', PATH_NORMAL);
+            }
           }, 110);
         }
         scheduleBlink();
-      }, delay);
+      }, wait);
     }
     scheduleBlink();
 
-    // 2. Touch Interaction (Like petting Eilik's head)
-    face.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      triggerHappyMood();
-    });
+    // 2. Pet / Tickle Animation
+    function triggerHappy() {
+      isBusy = true;
+      leftPath.setAttribute('d', PATH_HAPPY);
+      rightPath.setAttribute('d', PATH_HAPPY);
+      face.style.transform = "rotate(4deg) scale(1.05)";
+      status.innerText = "Hehe! (^_^)";
+      speak("That tickles!");
 
-    face.addEventListener('click', () => {
-      triggerHappyMood();
-    });
-
-    function triggerHappyMood() {
-      leftEye.classList.add('happy');
-      rightEye.classList.add('happy');
-      statusHint.innerText = "^ _ ^";
       setTimeout(() => {
-        leftEye.classList.remove('happy');
-        rightEye.classList.remove('happy');
-        statusHint.innerText = "Tap face to talk or tickle";
-      }, 1400);
+        face.style.transform = "rotate(-4deg) scale(1.05)";
+      }, 200);
+
+      setTimeout(() => {
+        face.style.transform = "none";
+        leftPath.setAttribute('d', PATH_NORMAL);
+        rightPath.setAttribute('d', PATH_NORMAL);
+        status.innerText = "Tap face or buttons below";
+        isBusy = false;
+      }, 1600);
+    }
+    face.addEventListener('click', triggerHappy);
+
+    // 3. Audio & Text-to-Speech
+    function speak(text) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'en-US';
+      utter.pitch = 1.35;
+      utter.rate = 1.05;
+      window.speechSynthesis.speak(utter);
     }
 
-    // 3. Speech Recognition (Alexa-style Listening)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
+    // 4. Music Playback
+    let playing = false;
+    btnMusic.addEventListener('click', () => {
+      if (!playing) {
+        musicPlayer.src = "https://streams.ilovemusic.de/iloveradio17.mp3";
+        musicPlayer.play().then(() => {
+          playing = true;
+          btnMusic.innerText = "⏸ Pause Music";
+          status.innerText = "Playing Lo-Fi stream...";
+        }).catch(e => {
+          status.innerText = "Tap screen first to permit audio";
+        });
+      } else {
+        musicPlayer.pause();
+        playing = false;
+        btnMusic.innerText = "🎵 Play Music";
+        status.innerText = "Music stopped";
+      }
+    });
 
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+    // 5. Speech Recognition (Talk)
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      const recognition = new SpeechRec();
       recognition.lang = 'en-US';
 
-      recognition.onstart = () => {
-        leftEye.classList.add('listening');
-        rightEye.classList.add('listening');
-        statusHint.innerText = "Listening...";
-      };
+      btnTalk.addEventListener('click', () => {
+        recognition.start();
+        leftEye.style.transform = "scale(1.15)";
+        rightEye.style.transform = "scale(1.15)";
+        status.innerText = "Listening...";
+      });
 
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        statusHint.innerText = `You: "${transcript}"`;
-        handleCommand(transcript);
+      recognition.onresult = (e) => {
+        leftEye.style.transform = "none";
+        rightEye.style.transform = "none";
+        const text = e.results[0][0].transcript.toLowerCase();
+        status.innerText = `You: "${text}"`;
+
+        if (text.includes("music") || text.includes("play")) {
+          btnMusic.click();
+          speak("Playing music for you!");
+        } else if (text.includes("stop")) {
+          if (playing) btnMusic.click();
+          speak("Stopping music.");
+        } else {
+          speak("You said: " + text);
+        }
       };
 
       recognition.onerror = () => {
-        resetEyes();
-      };
-
-      recognition.onend = () => {
-        resetEyes();
-      };
-    }
-
-    function resetEyes() {
-      leftEye.classList.remove('listening');
-      rightEye.classList.remove('listening');
-    }
-
-    // Double tap the background to talk
-    window.addEventListener('dblclick', () => {
-      if (recognition) {
-        recognition.start();
-      } else {
-        alert("Speech recognition not supported in this browser. Use mobile Chrome/Safari.");
-      }
-    });
-
-    // 4. Intent Routing (Music & Dialogue)
-    function handleCommand(text) {
-      if (text.includes("music") || text.includes("play song") || text.includes("play jazz")) {
-        // Stream a free lo-fi / chillout web radio stream
-        musicPlayer.src = "https://streams.ilovemusic.de/iloveradio17.mp3"; 
-        musicPlayer.play();
-        speakReply("Playing your chillout music station now!");
-      } else if (text.includes("stop") || text.includes("quiet")) {
-        musicPlayer.pause();
-        speakReply("Music stopped.");
-      } else {
-        // Simple built-in replies (or bridge to OpenAI / DeepSeek endpoint here)
-        queryBrain(text);
-      }
-    }
-
-    // 5. Text-To-Speech with Mouth / Bounce sync
-    function speakReply(text) {
-      const synth = window.speechSynthesis;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.35; // Slightly higher pitch for cute robot persona
-      utterance.rate = 1.05;
-
-      utterance.onboundary = () => {
-        // Micro-bounce eyes while speaking
-        leftEye.style.transform = `scaleY(${Math.random() * 0.3 + 0.85})`;
-        rightEye.style.transform = `scaleY(${Math.random() * 0.3 + 0.85})`;
-      };
-
-      utterance.onend = () => {
         leftEye.style.transform = "none";
         rightEye.style.transform = "none";
-        statusHint.innerText = "Tap face to talk or tickle";
+        status.innerText = "Didn't catch that. Tap talk again.";
       };
-
-      synth.speak(utterance);
-    }
-
-    async function queryBrain(userText) {
-      statusHint.innerText = "Thinking...";
-      // You can replace this fetch with your own OpenAI/DeepSeek backend
-      speakReply(`I heard you say: ${userText}. How can I help you today?`);
+    } else {
+      btnTalk.style.display = "none";
+      status.innerText = "Voice API not supported in this browser.";
     }
   </script>
 </body>
